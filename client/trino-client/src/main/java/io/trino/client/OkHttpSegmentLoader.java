@@ -22,6 +22,8 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
+import java.io.Closeable;
+import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
@@ -60,13 +62,22 @@ public class OkHttpSegmentLoader
                 .addHeader(ACCEPT_ENCODING, "identity")
                 .build();
 
-        Response response = callFactory.newCall(request).execute();
+        Call call = callFactory.newCall(request);
+        Response response = call.execute();
         if (response.body() == null) {
             throw new IOException("Could not open segment for streaming, got empty body");
         }
 
         if (response.isSuccessful()) {
-            return response.body().byteStream();
+            return new FilterInputStream(response.body().byteStream()) {
+                @Override
+                public void close()
+                {
+                    call.cancel();
+                    closeQuietly(response);
+                    closeQuietly(super::close);
+                }
+            };
         }
         throw new IOException(format("Could not open segment for streaming, got error '%s' with code %d", response.message(), response.code()));
     }
@@ -109,5 +120,19 @@ public class OkHttpSegmentLoader
         if (callFactory instanceof OkHttpClient) {
             ((OkHttpClient) callFactory).dispatcher().executorService().shutdown();
         }
+    }
+
+    private static void closeQuietly(Closeable closeable)
+    {
+        try {
+            closeable.close();
+        }
+        catch (IOException e) {
+            logger.log(Level.WARNING, "Failed to close resource", e);
+        }
+        catch (RuntimeException e) {
+            throw e;
+        }
+        catch (Exception ignored) {}
     }
 }
