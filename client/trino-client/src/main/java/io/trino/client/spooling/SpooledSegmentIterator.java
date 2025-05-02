@@ -23,7 +23,6 @@ import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.util.Iterator;
 import java.util.List;
-import java.util.NoSuchElementException;
 
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.base.Verify.verify;
@@ -96,7 +95,7 @@ class SpooledSegmentIterator
         }
 
         if (closed) {
-            throw new NoSuchElementException();
+            return endOfData();
         }
 
         try {
