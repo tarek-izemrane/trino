@@ -38,6 +38,7 @@ import java.util.stream.Stream;
 import static com.google.common.base.MoreObjects.firstNonNull;
 import static com.google.common.base.StandardSystemProperty.USER_HOME;
 import static com.google.common.base.Strings.emptyToNull;
+import static com.google.common.base.Strings.isNullOrEmpty;
 import static com.google.common.base.Throwables.getStackTraceAsString;
 import static io.trino.cli.ClientOptions.DEBUG_OPTION_NAME;
 import static io.trino.client.spooling.encoding.QueryDataDecoders.getPreferredEncodings;
@@ -81,7 +82,9 @@ public final class Trino
             builder.append(throwable.getClass().getName()).append(": ");
         }
 
-        builder.append(throwable.getMessage(), AttributedStyle.BOLD.foreground(AttributedStyle.RED));
+        if (!isNullOrEmpty(throwable.getMessage())) {
+            builder.append(throwable.getMessage(), AttributedStyle.BOLD.foreground(AttributedStyle.RED));
+        }
 
         if (debug) {
             String messagePattern = quote(throwable.getClass().getName() + ": " + throwable.getMessage());
