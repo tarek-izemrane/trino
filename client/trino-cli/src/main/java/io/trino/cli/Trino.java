@@ -39,6 +39,7 @@ import static com.google.common.base.MoreObjects.firstNonNull;
 import static com.google.common.base.StandardSystemProperty.USER_HOME;
 import static com.google.common.base.Strings.emptyToNull;
 import static com.google.common.base.Strings.isNullOrEmpty;
+import static com.google.common.base.Throwables.getCausalChain;
 import static com.google.common.base.Throwables.getStackTraceAsString;
 import static io.trino.cli.ClientOptions.DEBUG_OPTION_NAME;
 import static io.trino.client.spooling.encoding.QueryDataDecoders.getPreferredEncodings;
@@ -77,6 +78,10 @@ public final class Trino
 
     public static String formatCliErrorMessage(Throwable throwable, boolean debug)
     {
+        if (wasInterrupted(throwable)) {
+            Thread.currentThread().interrupt();
+            return "(Query aborted by user)";
+        }
         AttributedStringBuilder builder = new AttributedStringBuilder();
         if (debug) {
             builder.append(throwable.getClass().getName()).append(": ");
@@ -120,6 +125,13 @@ public final class Trino
                 .map(Paths::get)
                 .filter(Files::exists)
                 .map(path -> path.resolve(file).toString());
+    }
+
+    private static boolean wasInterrupted(Throwable throwable)
+    {
+        return getCausalChain(throwable)
+                .stream()
+                .anyMatch(InterruptedException.class::isInstance);
     }
 
     public static class VersionProvider
